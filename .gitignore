@@ -1,0 +1,13 @@
+build/
+data/
+misc/
+
+*.png
+*.jpg
+*.bin
+*.rgba
+*.yuv
+
+*.log
+*.diff
+*.txt

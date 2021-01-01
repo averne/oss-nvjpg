@@ -1,0 +1,9 @@
+{
+    "files.exclude": {
+        "**/build": true,
+        "**/out": true,
+    },
+    "files.associations": {
+        "**/c++/**": "cpp"
+    }
+}

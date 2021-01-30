@@ -98,9 +98,9 @@ int Image::parse_sof(JpegSegmentHeader seg, Bitstream &bs) {
         if ((this->components[0].sampling_vert == 2) && (this->components[0].sampling_horiz == 2))
             this->sampling = SamplingScheme::S420;
         if ((this->components[0].sampling_vert == 2) && (this->components[0].sampling_horiz != 2))
-            this->sampling = SamplingScheme::S422;
-        if ((this->components[0].sampling_vert != 2) && (this->components[0].sampling_horiz == 2))
             this->sampling = SamplingScheme::S440;
+        if ((this->components[0].sampling_vert != 2) && (this->components[0].sampling_horiz == 2))
+            this->sampling = SamplingScheme::S422;
         if ((this->components[0].sampling_vert != 2) && (this->components[0].sampling_horiz != 2))
             this->sampling = SamplingScheme::S444;
     } else {

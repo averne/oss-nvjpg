@@ -15,6 +15,7 @@ Decoding times are largely faster than those obtained by software rendering, eve
 | libjpeg-turbo | 6.127ms | 66.341ms |
 | stb_image (with NEON routines) | 16.512ms | 158.474ms |
 | Python-pillow | 11.688ms | 114.918ms |
+| nanoJPEG | 48.299ms | 531.575ms |
 
 ## Building
 ```sh

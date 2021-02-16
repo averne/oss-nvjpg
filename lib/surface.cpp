@@ -36,9 +36,6 @@ std::size_t compute_size(std::size_t pitch, std::size_t height) {
 } // namespace
 
 int Surface::allocate()  {
-    if ((this->type != ColorFormat::R8G8B8X8) && (this->type != ColorFormat::A8))
-        return EINVAL;
-
     this->pitch = compute_pitch(this->width, this->get_bpp());
     NJ_TRY_RET(this->map.allocate(compute_size(this->pitch, this->height), 0x400, 0x1));
     NJ_TRY_ERRNO(this->map.map());
@@ -47,14 +44,14 @@ int Surface::allocate()  {
 
 int VideoSurface::allocate() {
     auto hsubsamp = 0, vsubsamp = 0;
-    switch (this->type) {
-        case ColorFormat::YV12:
+    switch (this->sampling) {
+        case SamplingFormat::S420:
             hsubsamp = 2, vsubsamp = 2;
             break;
-        case ColorFormat::YV16:
+        case SamplingFormat::S422:
             hsubsamp = 2, vsubsamp = 1;
             break;
-        case ColorFormat::YV24:
+        case SamplingFormat::S444:
             hsubsamp = 1, vsubsamp = 1;
             break;
         default:

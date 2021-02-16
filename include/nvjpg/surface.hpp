@@ -24,15 +24,17 @@
 
 namespace nj {
 
-enum class ColorFormat {
-    R8G8B8X8,   // RGB
-    A8,         // Monochrome
-    YV12,       // Triplanar YVU with subsampling 4:2:0
-    YV16,       // Triplanar YVU with subsampling 4:2:2
-    YV24,       // Triplanar YVU with subsampling 4:4:4
+enum class PixelFormat {
+    YUV  = 0,
+    RGB  = 1,
+    BGR  = 2,
+    RGBA = 3,
+    BGRA = 4,
+    ABGR = 5,
+    ARGB = 6,
 };
 
-enum class SamplingScheme {
+enum class SamplingFormat {
     Monochrome = 0,
     S420       = 1,
     S422       = 2,
@@ -40,12 +42,21 @@ enum class SamplingScheme {
     S444       = 4,
 };
 
+enum class MemoryMode {
+    SemiPlanarNv12 = 0,
+    SemiPlanarNv21 = 1,
+    SinglyPlanar   = 2,
+    Planar         = 3,
+};
+
 class SurfaceBase {
     public:
-        ColorFormat type;
+        std::size_t width, height;
+        PixelFormat type;
 
     public:
-        constexpr SurfaceBase(ColorFormat type): type(type) { }
+        constexpr SurfaceBase(std::size_t width, std::size_t height, PixelFormat type):
+            width(width), height(height), type(type) { }
 
         const std::uint8_t *data() const {
             return static_cast<std::uint8_t *>(this->map.address());
@@ -68,67 +79,57 @@ class SurfaceBase {
 
 class Surface: public SurfaceBase {
     public:
-        constexpr static std::uint32_t surface_type = 3;
-        std::size_t width, height, pitch;
+        std::size_t pitch;
 
     public:
-        Surface(ColorFormat type, std::size_t width, std::size_t height):
-            SurfaceBase(type), width(width), height(height) { }
+        constexpr Surface(std::size_t width, std::size_t height, PixelFormat pixel_fmt = PixelFormat::RGBA):
+            SurfaceBase(width, height, pixel_fmt) { }
 
         int allocate();
 
         constexpr int get_bpp() const {
             switch (this->type) {
-                case ColorFormat::A8:
-                    return 1;
-                case ColorFormat::R8G8B8X8:
-                    return 4;
+                case PixelFormat::RGB  ... PixelFormat::BGR:
+                    return 3;
+                case PixelFormat::RGBA ... PixelFormat::ARGB:
                 default:
-                    return -1;
+                    return 4;
             }
         }
 
-        constexpr int get_depth() const {
-            return 3 * 8;
+        constexpr auto get_memory_mode() const {
+            return MemoryMode::Planar;
         }
 };
 
 class VideoSurface: public SurfaceBase {
     public:
-        constexpr static std::uint32_t surface_type = 0;
-        std::size_t width, height, luma_pitch, chroma_pitch;
+        SamplingFormat sampling;
+        std::size_t luma_pitch, chroma_pitch;
         const std::uint8_t *luma_data, *chromab_data, *chromar_data;
 
     public:
-        VideoSurface(ColorFormat type, std::size_t width, std::size_t height):
-            SurfaceBase(type), width(width), height(height) { }
+        constexpr VideoSurface(std::size_t width, std::size_t height, SamplingFormat sampling = SamplingFormat::S420):
+            SurfaceBase(width, height, PixelFormat::YUV), sampling(sampling) { }
 
         int allocate();
 
-        constexpr int get_depth() const {
-            switch (this->type) {
-                case ColorFormat::YV12:
-                    return 12;
-                case ColorFormat::YV16:
-                    return 16;
-                case ColorFormat::YV24:
-                    return 24;
+        constexpr int get_depth() const  {
+            switch (this->sampling) {
+                case SamplingFormat::S420:
                 default:
-                    return -1;
+                    return 12;
+                case SamplingFormat::S422:
+                    return 16;
+                case SamplingFormat::S440:
+                    return 16;
+                case SamplingFormat::S444:
+                    return 24;
             }
         }
 
-        constexpr SamplingScheme get_sampling() const {
-            switch (this->type) {
-                case ColorFormat::YV12:
-                    return SamplingScheme::S420;
-                case ColorFormat::YV16:
-                    return SamplingScheme::S422;
-                case ColorFormat::YV24:
-                    return SamplingScheme::S444;
-                default:
-                    return static_cast<SamplingScheme>(-1);
-            }
+        constexpr auto get_memory_mode() const {
+            return MemoryMode::Planar;
         }
 };
 

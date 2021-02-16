@@ -28,8 +28,8 @@ struct NvjpgRegisters {
     std::array<std::uint32_t, 63>  reserved_x204;
     std::uint32_t                  execute;
     std::array<std::uint32_t, 255> reserved_x304;       // nvdec registers?
-    std::uint32_t                  always_3;            // version?
-    std::uint32_t                  reserved_x704;
+    std::uint32_t                  control_params;      // Bitflags of various debugging options
+    std::uint32_t                  picture_index;
     std::uint32_t                  picture_info_offset;
     std::uint32_t                  read_info_offset;
     std::uint32_t                  scan_data_offset;
@@ -89,14 +89,24 @@ struct NvjpgPictureInfo {
     std::uint32_t                    out_surf_type;
     std::uint32_t                    out_luma_surf_pitch;
     std::uint32_t                    out_chroma_surf_pitch;
-    std::uint32_t                    attribute;         // ?
+    std::uint32_t                    alpha;
     std::array<std::uint32_t, 6>     yuv2rgb_kernel;    // Y gain, VR, UG, VG, UB, Y offset
-    std::array<std::uint32_t, 2>     reserved_xb10;
-    std::uint32_t                    depth;
+    std::uint32_t                    tile_mode;         // 0: pitch linear, 1, block linear
+    std::uint32_t                    gob_height;        // If tile mode is block linear
+    std::uint32_t                    memory_mode;
     std::uint32_t                    downscale_log_2;
     std::array<std::uint32_t, 3>     reserved_xb1c;
 };
-
 static_assert(sizeof(NvjpgPictureInfo) == 0xb2c);
+
+struct NvjpgStatus {
+    std::uint32_t used_bytes;
+    std::uint32_t mcu_x;
+    std::uint32_t mcu_y;
+    std::uint32_t reserved_xc;
+    std::uint32_t result;
+    std::uint32_t reserved_x14[3];
+};
+static_assert(sizeof(NvjpgStatus) == 0x20);
 
 } // namespace nj

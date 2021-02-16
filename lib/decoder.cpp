@@ -64,7 +64,7 @@ constinit std::array kernel_bt601ex = {
 int Decoder::initialize(std::size_t capacity) {
     NJ_TRY_RET(this->cmdbuf_map   .allocate(0x8000,                   32,     0x1));
     NJ_TRY_RET(this->pic_info_map .allocate(sizeof(NvjpgPictureInfo), 16,     0x1));
-    NJ_TRY_RET(this->read_data_map.allocate(32,                       16,     0x1));
+    NJ_TRY_RET(this->read_data_map.allocate(sizeof(NvjpgStatus),      16,     0x1));
     NJ_TRY_RET(this->scan_data_map.allocate(capacity,                 0x1000, 0x1));
 
     NJ_TRY_ERRNO(this->cmdbuf_map   .map());
@@ -143,7 +143,7 @@ NvjpgPictureInfo *Decoder::build_picture_info_common(const Image &image, std::ui
     info->scan_data_offset      = 0;
     info->scan_data_size        = image.get_scan_data().size();
     info->scan_data_samp_layout = static_cast<std::uint32_t>(image.sampling);
-    info->attribute             = 0;
+    info->alpha                 = 0;
     info->downscale_log_2       = downscale;
 
     return info;
@@ -198,10 +198,10 @@ int Decoder::render(const Image &image, Surface &surf, std::uint32_t downscale) 
 
     auto *info = this->build_picture_info_common(image, downscale);
     info->out_data_samp_layout  = static_cast<std::uint32_t>(image.sampling);
-    info->out_surf_type         = surf.surface_type;
+    info->out_surf_type         = static_cast<std::uint32_t>(surf.type);
     info->out_luma_surf_pitch   = surf.pitch;
     info->out_chroma_surf_pitch = 0;
-    info->depth                 = surf.get_depth() / 8;
+    info->memory_mode           = static_cast<std::uint32_t>(surf.get_memory_mode());
 
     switch (this->colorspace) {
         case ColorSpace::BT601:
@@ -219,7 +219,6 @@ int Decoder::render(const Image &image, Surface &surf, std::uint32_t downscale) 
     this->cmdbuf.clear();
     this->cmdbuf.begin(Decoder::class_id);
     this->cmdbuf.push_value(NJ_REGPOS(NvjpgRegisters, operation_type),      1);
-    this->cmdbuf.push_value(NJ_REGPOS(NvjpgRegisters, always_3),            3);
     this->cmdbuf.push_reloc(NJ_REGPOS(NvjpgRegisters, picture_info_offset), this->pic_info_map);
     this->cmdbuf.push_reloc(NJ_REGPOS(NvjpgRegisters, read_info_offset),    this->read_data_map);
     this->cmdbuf.push_reloc(NJ_REGPOS(NvjpgRegisters, scan_data_offset),    this->scan_data_map);
@@ -234,19 +233,18 @@ int Decoder::render(const Image &image, VideoSurface &surf, std::uint32_t downsc
     if (surf.width == 0 || surf.height == 0)
         return EINVAL;
 
-    auto sampling = (image.num_components == 1) ? SamplingScheme::Monochrome : surf.get_sampling();
+    auto sampling = (image.num_components == 1) ? SamplingFormat::Monochrome : surf.sampling;
 
     auto *info = this->build_picture_info_common(image, downscale);
     info->out_data_samp_layout  = static_cast<std::uint32_t>(sampling);
-    info->out_surf_type         = surf.surface_type;
+    info->out_surf_type         = static_cast<std::uint32_t>(surf.type);
     info->out_luma_surf_pitch   = surf.luma_pitch;
     info->out_chroma_surf_pitch = surf.chroma_pitch;
-    info->depth                 = 3; // TODO
+    info->memory_mode           = static_cast<std::uint32_t>(surf.get_memory_mode());
 
     this->cmdbuf.clear();
     this->cmdbuf.begin(Decoder::class_id);
     this->cmdbuf.push_value(NJ_REGPOS(NvjpgRegisters, operation_type),      1);
-    this->cmdbuf.push_value(NJ_REGPOS(NvjpgRegisters, always_3),            3);
     this->cmdbuf.push_reloc(NJ_REGPOS(NvjpgRegisters, picture_info_offset), this->pic_info_map);
     this->cmdbuf.push_reloc(NJ_REGPOS(NvjpgRegisters, read_info_offset),    this->read_data_map);
     this->cmdbuf.push_reloc(NJ_REGPOS(NvjpgRegisters, scan_data_offset),    this->scan_data_map);
@@ -262,7 +260,7 @@ int Decoder::render(const Image &image, VideoSurface &surf, std::uint32_t downsc
 int Decoder::wait(const SurfaceBase &surf, std::size_t *num_read_bytes, std::int32_t timeout_us) {
     NJ_TRY_RET(NvHostCtrl::wait(surf.render_fence, timeout_us));
     if (num_read_bytes)
-        *num_read_bytes = *reinterpret_cast<std::uint32_t *>(this->read_data_map.address());
+        *num_read_bytes = reinterpret_cast<NvjpgStatus *>(this->read_data_map.address())->used_bytes;
     return 0;
 }
 

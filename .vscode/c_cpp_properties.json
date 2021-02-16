@@ -3,7 +3,7 @@
         {
             "name": "Linux",
             "compileCommands": "build/compile_commands.json",
-            "compilerPath": "/usr/bin/gcc-10",
+            "compilerPath": "/usr/bin/gcc",
             "cStandard": "gnu11",
             "cppStandard": "gnu++20",
             "intelliSenseMode": "gcc-arm64"

@@ -96,15 +96,15 @@ int Image::parse_sof(JpegSegmentHeader seg, Bitstream &bs) {
 
     if (this->num_components == 3) {
         if ((this->components[0].sampling_vert == 2) && (this->components[0].sampling_horiz == 2))
-            this->sampling = SamplingScheme::S420;
+            this->sampling = SamplingFormat::S420;
         if ((this->components[0].sampling_vert == 2) && (this->components[0].sampling_horiz != 2))
-            this->sampling = SamplingScheme::S440;
+            this->sampling = SamplingFormat::S440;
         if ((this->components[0].sampling_vert != 2) && (this->components[0].sampling_horiz == 2))
-            this->sampling = SamplingScheme::S422;
+            this->sampling = SamplingFormat::S422;
         if ((this->components[0].sampling_vert != 2) && (this->components[0].sampling_horiz != 2))
-            this->sampling = SamplingScheme::S444;
+            this->sampling = SamplingFormat::S444;
     } else {
-        this->sampling = SamplingScheme::Monochrome;
+        this->sampling = SamplingFormat::Monochrome;
     }
 
     return 0;

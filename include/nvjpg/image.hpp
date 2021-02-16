@@ -80,7 +80,7 @@ class Image {
         bool           progressive           = false;
         std::uint8_t   num_components        = 0;     // 1 (grayscale) and 3 (YUV) supported
         std::uint8_t   sampling_precision    = 0;     // 8 and 12-bit precision supported
-        SamplingScheme sampling;
+        SamplingFormat sampling;
         std::uint16_t  restart_interval      = 0;
         std::uint8_t   spectral_selection_lo = 0;
         std::uint8_t   spectral_selection_hi = 0;

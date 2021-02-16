@@ -113,7 +113,7 @@ int main(int argc, char **argv) {
     std::printf("Image dimensions: %ux%u\n", image.width, image.height);
 
     // Note: SDL only support YV12 so setting the color format to something else will offset the chroma data in the display window
-    nj::VideoSurface surf(nj::ColorFormat::YV12, image.width, image.height);
+    nj::VideoSurface surf(image.width, image.height, nj::SamplingFormat::S420);
     if (auto rc = surf.allocate(); rc) {
         std::fprintf(stderr, "Failed to allocate surface: %#x\n", rc);
         return 1;

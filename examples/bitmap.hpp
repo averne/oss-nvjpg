@@ -78,6 +78,9 @@ class Bmp {
         }
 
         int write(const nj::Surface &surf, std::string_view path) {
+            if (surf.type != nj::PixelFormat::BGRA) // Pixel data is in BGR order
+                return -1;
+
             auto *fp = std::fopen(path.data(), "wb");
             if (!fp)
                 return 1;
@@ -95,7 +98,7 @@ class Bmp {
                 for (auto j = 0; j < this->image_header.width; ++j) {
                     auto *src = surf.data()     + i * surf.pitch + j * surf.get_bpp();
                     auto *dst = line_buf.data() + i * line_width + j * this->image_header.num_comps;
-                    std::copy_n(std::reverse_iterator(src + 3), 3, dst); // Pixel data is in BGR order
+                    std::copy_n(src, 3, dst);
                 }
             }
 

@@ -45,7 +45,7 @@ static void display_image(const nj::Surface &surface) {
     NJ_SCOPEGUARD([&screen_surf] { SDL_FreeSurface(screen_surf); });
 
     auto *surf = SDL_CreateRGBSurfaceWithFormatFrom(const_cast<std::uint8_t *>(surface.data()),
-        surface.width, surface.height, surface.get_depth(), surface.pitch, SDL_PIXELFORMAT_RGBA32);
+        surface.width, surface.height, surface.get_bpp() * 8, surface.pitch, SDL_PIXELFORMAT_RGBA32);
     if (!surf) {
         std::fprintf(stderr, "Failed to create image surface: %s\n", SDL_GetError());
         return;
@@ -101,7 +101,7 @@ int main(int argc, char **argv) {
 
     std::printf("Image dimensions: %ux%u\n", image.width, image.height);
 
-    nj::Surface surf(nj::ColorFormat::R8G8B8X8, image.width, image.height);
+    nj::Surface surf(image.width, image.height, nj::PixelFormat::RGBA);
     if (auto rc = surf.allocate(); rc) {
         std::fprintf(stderr, "Failed to allocate surface: %#x\n", rc);
         return 1;

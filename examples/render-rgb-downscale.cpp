@@ -46,7 +46,7 @@ int main(int argc, char **argv) {
     }
     NJ_SCOPEGUARD([&decoder] { decoder.finalize(); });
 
-    nj::Surface surf(nj::ColorFormat::R8G8B8X8, 0x1000, 0x1000);
+    nj::Surface surf(0x1000, 0x1000, nj::PixelFormat::BGRA);
     if (auto rc = surf.allocate(); rc) {
         std::fprintf(stderr, "Failed to allocate surface: %#x\n", rc);
         return 1;

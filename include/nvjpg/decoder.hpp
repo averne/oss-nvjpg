@@ -52,7 +52,7 @@ class Decoder {
             return this->scan_data_map.size();
         }
 
-        int render(const Image &image, Surface      &surf, std::uint32_t downscale = 0);
+        int render(const Image &image, Surface      &surf, std::uint8_t alpha = 0, std::uint32_t downscale = 0);
         int render(const Image &image, VideoSurface &surf, std::uint32_t downscale = 0);
 
         int wait(const SurfaceBase &surf, std::size_t *num_read_bytes = nullptr, std::int32_t timeout_us = -1);

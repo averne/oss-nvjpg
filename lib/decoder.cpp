@@ -192,7 +192,7 @@ int Decoder::render_common(const Image &image, SurfaceBase &surf) {
     return this->channel.submit(cmdbufs, exts, class_ids, relocs, shifts, types, incrs, fences, surf.render_fence);
 }
 
-int Decoder::render(const Image &image, Surface &surf, std::uint32_t downscale) {
+int Decoder::render(const Image &image, Surface &surf, std::uint8_t alpha, std::uint32_t downscale) {
     if (surf.width == 0 || surf.height == 0)
         return EINVAL;
 
@@ -201,6 +201,7 @@ int Decoder::render(const Image &image, Surface &surf, std::uint32_t downscale) 
     info->out_surf_type         = static_cast<std::uint32_t>(surf.type);
     info->out_luma_surf_pitch   = surf.pitch;
     info->out_chroma_surf_pitch = 0;
+    info->alpha                 = alpha;
     info->memory_mode           = static_cast<std::uint32_t>(surf.get_memory_mode());
 
     switch (this->colorspace) {

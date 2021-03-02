@@ -18,10 +18,19 @@ Decoding times are largely faster than those obtained by software rendering, eve
 | nanoJPEG | 48.299ms | 531.575ms |
 
 ## Building
+Requires C++20 support.
+
+### Linux
 ```sh
-meson build && meson compile -C build -j$(nproc)
+meson build && meson compile -C build
 ```
-(requires C++20 support)
+Additionally, run `meson compile -C build render-rgb render-yuv render-rgb-downscale` to build the examples.
+
+### devkitA64
+```sh
+make -j$(nproc)
+```
+Additionally, run `make examples` to build the examples.
 
 ## Credits
 - The [Ryujinx](https://github.com/Ryujinx/Ryujinx) project for extensive documentation of the Host1x interface

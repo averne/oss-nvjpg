@@ -26,15 +26,42 @@
 
 namespace nj {
 
-int initialize() {
+#ifdef __SWITCH__
+extern "C" std::uint32_t __nx_applet_type;
+#endif
+
+[[maybe_unused]]
+static Result initialize() {
+#ifdef __SWITCH__
+    // Override the applet type, which controls what flavour of nvdrv gets initialized
+    // To get access to /dev/nvhost-nvjpg, we need nvdrv:a/s/t
+    auto saved_applet_type = std::exchange(__nx_applet_type, AppletType_LibraryApplet);
+    NJ_SCOPEGUARD([&saved_applet_type] { __nx_applet_type = saved_applet_type; });
+
+    NJ_TRY_RET(nvInitialize());
+    NJ_TRY_RET(nj::NvMap::initialize());
+    NJ_TRY_RET(nj::NvHostCtrl::initialize());
+
+    NJ_TRY_RET(mmuInitialize());
+#else
     NJ_TRY_ERRNO(nj::NvMap::initialize());
     NJ_TRY_ERRNO(nj::NvHostCtrl::initialize());
+#endif
     return 0;
 }
 
-int finalize() {
+[[maybe_unused]]
+static Result finalize() {
+#ifdef __SWITCH__
+    NJ_TRY_RET(nj::NvMap::finalize());
+    NJ_TRY_RET(nj::NvHostCtrl::finalize());
+    nvExit();
+
+    mmuExit();
+#else
     NJ_TRY_ERRNO(nj::NvMap::finalize());
     NJ_TRY_ERRNO(nj::NvHostCtrl::finalize());
+#endif
     return 0;
 }
 

@@ -38,7 +38,9 @@ std::size_t compute_size(std::size_t pitch, std::size_t height) {
 int Surface::allocate()  {
     this->pitch = compute_pitch(this->width, this->get_bpp());
     NJ_TRY_RET(this->map.allocate(compute_size(this->pitch, this->height), 0x400, 0x1));
+#ifndef __SWITCH__
     NJ_TRY_ERRNO(this->map.map());
+#endif
     return 0;
 }
 
@@ -64,7 +66,9 @@ int VideoSurface::allocate() {
     auto luma_size   = compute_size(this->luma_pitch, this->height);
     auto chroma_size = compute_size(this->chroma_pitch, this->height / vsubsamp);
     NJ_TRY_RET(this->map.allocate(luma_size + 2 * chroma_size, 0x400, 0x1));
+#ifndef __SWITCH__
     NJ_TRY_ERRNO(this->map.map());
+#endif
 
     this->luma_data    = static_cast<std::uint8_t *>(this->map.address());
     this->chromab_data = static_cast<std::uint8_t *>(this->map.address()) + luma_size;

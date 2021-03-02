@@ -18,39 +18,62 @@
 #pragma once
 
 #include <cstdint>
-#include <sys/stat.h>
-#include <sys/ioctl.h>
-#include <sys/mman.h>
-#include <fcntl.h>
-#include <unistd.h>
+
+#ifdef __SWITCH__
+#   include <switch.h>
+#else
+#   include <sys/stat.h>
+#   include <sys/ioctl.h>
+#   include <sys/mman.h>
+#   include <fcntl.h>
+#   include <unistd.h>
+#endif
 
 #include <nvjpg/nv/ioctl_types.h>
+#include <nvjpg/utils.hpp>
 
 namespace nj {
 
 class NvHostCtrl {
     public:
-        static int initialize() {
+        static Result initialize() {
+#ifdef __SWITCH__
+            return nvFenceInit();
+#else
             return NvHostCtrl::nvhostctrl_fd = ::open("/dev/nvhost-ctrl", O_RDWR | O_SYNC | O_CLOEXEC);
+#endif
         }
 
-        static int finalize() {
+        static Result finalize() {
+#ifdef __SWITCH__
+            nvFenceExit();
+            return 0;
+#else
             return ::close(NvHostCtrl::nvhostctrl_fd);
+#endif
         }
 
-        static int wait(nvhost_ctrl_fence fence, std::int32_t timeout) {
+#ifdef __SWITCH__
+        static Result wait(NvFence fence, std::int32_t timeout) {
+            return nvFenceWait(&fence, timeout);
+        }
+#else
+        static Result wait(nvhost_ctrl_fence fence, std::int32_t timeout) {
             nvhost_ctrl_syncpt_waitex_args args = {
-                .id      = fence.syncpt,
-                .thresh  = fence.thresh,
+                .id      = fence.id,
+                .thresh  = fence.value,
                 .timeout = timeout,
                 .value   = 0,
             };
 
             return ::ioctl(NvHostCtrl::nvhostctrl_fd, NVHOST_IOCTL_CTRL_SYNCPT_WAITEX, &args);
         }
+#endif
 
     private:
+#ifndef __SWITCH__
         static inline int nvhostctrl_fd = 0;
+#endif
 };
 
 } // namespace nj

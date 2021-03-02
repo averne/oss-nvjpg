@@ -17,69 +17,45 @@
 
 #include <cstdio>
 #include <cstring>
+#include <algorithm>
 #include <chrono>
-#include <SDL2/SDL.h>
+#include <deko3d.hpp>
 #include <nvjpg.hpp>
 
+extern "C" void userAppInit() {
+    socketInitializeDefault();
+    nxlinkStdio();
+}
+
+extern "C" void userAppExit() {
+    socketExit();
+}
+
 static void display_image(const nj::Surface &surface) {
-    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
-        std::fprintf(stderr, "Could not initialize sdl2: %s\n", SDL_GetError());
-        return;
-    }
-    NJ_SCOPEGUARD([] { SDL_Quit(); });
+    constexpr std::size_t fb_width = 1080, fb_height = 720;
+    Framebuffer fb;
+    framebufferCreate(&fb, nwindowGetDefault(), fb_width, fb_height, PIXEL_FORMAT_RGBA_8888, 1);
+    framebufferMakeLinear(&fb);
 
-    auto *window = SDL_CreateWindow("nvjpg",
-        SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
-        1080, 720, SDL_WINDOW_SHOWN);
-    if (!window) {
-        std::fprintf(stderr, "Could not create window: %s\n", SDL_GetError());
-        return;
-    }
-    NJ_SCOPEGUARD([&window] { SDL_DestroyWindow(window); });
+    auto *framebuf = static_cast<std::uint8_t *>(framebufferBegin(&fb, nullptr));
+    for (std::size_t i = 0; i < std::min(fb_height, surface.height); ++i)
+        std::copy_n(surface.data() + i * surface.pitch, std::min(surface.width, fb_width) * surface.get_bpp(), framebuf + i * fb.stride);
+    framebufferEnd(&fb);
 
-    auto *screen_surf = SDL_GetWindowSurface(window);
-    if (!screen_surf) {
-        std::fprintf(stderr, "Could not get window surface: %s\n", SDL_GetError());
-        return;
-    }
-    NJ_SCOPEGUARD([&screen_surf] { SDL_FreeSurface(screen_surf); });
-
-    auto *surf = SDL_CreateRGBSurfaceWithFormatFrom(const_cast<std::uint8_t *>(surface.data()),
-        surface.width, surface.height, surface.get_bpp() * 8, surface.pitch, SDL_PIXELFORMAT_RGBA32);
-    if (!surf) {
-        std::fprintf(stderr, "Failed to create image surface: %s\n", SDL_GetError());
-        return;
-    }
-    NJ_SCOPEGUARD([&surf] { SDL_FreeSurface(surf); });
-
-    auto *converted_surf = SDL_ConvertSurface(surf, screen_surf->format, 0);
-    if (!converted_surf) {
-        std::fprintf(stderr, "Could not convert surface: %s\n", SDL_GetError());
-        return;
-    }
-    NJ_SCOPEGUARD([&converted_surf] { SDL_FreeSurface(converted_surf); });
-
-    SDL_BlitSurface(converted_surf, nullptr, screen_surf, nullptr);
-    SDL_UpdateWindowSurface(window);
-
-    SDL_Event e;
-    while (true) {
-        if (!SDL_WaitEvent(&e)) {
-            std::fprintf(stderr, "Error while waiting on an event: %s\n", SDL_GetError());
-            return;
-        }
-
-        if (e.type == SDL_QUIT)
+    PadState pad;
+    padConfigureInput(1, HidNpadStyleTag_NpadHandheld);
+    padInitializeDefault(&pad);
+    while (appletMainLoop()) {
+        padUpdate(&pad);
+        if (padGetButtonsDown(&pad) & HidNpadButton_Plus)
             break;
+        consoleUpdate(nullptr);
     }
+
+    framebufferClose(&fb);
 }
 
 int main(int argc, char **argv) {
-    if (argc < 2) {
-        std::fprintf(stderr, "Usage: %s jpg\n", argv[0]);
-        return 1;
-    }
-
     if (auto rc = nj::initialize(); rc) {
         std::fprintf(stderr, "Failed to initialize library: %d: %s\n", rc, std::strerror(rc));
         return 1;
@@ -93,7 +69,7 @@ int main(int argc, char **argv) {
     }
     NJ_SCOPEGUARD([&decoder] { decoder.finalize(); });
 
-    nj::Image image(argv[1]);
+    nj::Image image((argc < 2) ? "sdmc:/test.jpg" : argv[1]);
     if (!image.is_valid() || image.parse()) {
         std::perror("Invalid file");
         return 1;
@@ -118,6 +94,8 @@ int main(int argc, char **argv) {
     auto time = std::chrono::system_clock::now() - start;
     std::printf("Rendered in %ldµs, read bytes: %lu\n",
         std::chrono::duration_cast<std::chrono::microseconds>(time).count(), read);
+
+    std::printf("Press + to exit\n");
 
     display_image(surf);
 

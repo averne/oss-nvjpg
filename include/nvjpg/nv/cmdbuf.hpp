@@ -78,10 +78,13 @@ class CmdBuf {
 
         void begin(std::uint32_t class_id, std::int32_t pre_fence = -1) {
             this->bufs.push_back({ this->map.handle(), static_cast<std::uint32_t>(this->size() * sizeof(Word)), 0 });
-            this->exts.push_back({ pre_fence, 0 });
-            this->class_ids.push_back(class_id);
 
             this->cur_buf_begin = this->size();
+
+#ifndef __SWITCH__
+            this->exts.push_back({ pre_fence, 0 });
+            this->class_ids.push_back(class_id);
+#endif
         }
 
         void end() {
@@ -90,8 +93,11 @@ class CmdBuf {
 
         void clear() {
             this->cur_word = static_cast<Word *>(this->map.address());
-            this->bufs  .clear(), this->exts  .clear(), this->class_ids.clear();
-            this->relocs.clear(), this->shifts.clear(), this->types    .clear();
+            this->bufs  .clear();
+#ifndef __SWITCH__
+            this->exts  .clear(), this->class_ids.clear();
+            this->relocs.clear(), this->shifts   .clear(), this->types.clear();
+#endif
         }
 
         void push_raw(Word word) {
@@ -108,6 +114,10 @@ class CmdBuf {
 
         void push_reloc(std::uint32_t offset, const NvMap &target, std::uint32_t target_offset = 0,
                 std::uint32_t shift = 8, std::uint32_t type = NVHOST_RELOC_TYPE_DEFAULT) {
+#ifdef __SWITCH__
+            // On the Switch, resolve relocations on the client side
+            this->push_value(offset, (target.iova() + target_offset) >> shift);
+#else
             this->push_value(offset, 0xdeadbeef); // Officially used placeholder value
 
             this->relocs.push_back({
@@ -118,8 +128,14 @@ class CmdBuf {
             });
             this->shifts.push_back({ shift });
             this->types.push_back({ type, 0 });
+#endif
         }
 
+#ifdef __SWITCH__
+        auto &get_bufs() {
+            return this->bufs;
+        }
+#else
         auto get_bufs() const {
             return std::make_tuple(this->bufs, this->exts, this->class_ids);
         }
@@ -127,6 +143,7 @@ class CmdBuf {
         auto get_relocs() const {
             return std::make_tuple(this->relocs, this->shifts, this->types);
         }
+#endif
 
     private:
         const NvMap &map;
@@ -135,12 +152,15 @@ class CmdBuf {
         std::size_t cur_buf_begin = 0;
 
         std::vector<nvhost_cmdbuf>      bufs;
+
+#ifndef __SWITCH__
         std::vector<nvhost_cmdbuf_ext>  exts;
         std::vector<std::uint32_t>      class_ids;
 
         std::vector<nvhost_reloc>       relocs;
         std::vector<nvhost_reloc_shift> shifts;
         std::vector<nvhost_reloc_type>  types;
+#endif
 };
 
 } // namespace nj

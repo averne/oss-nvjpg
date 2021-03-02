@@ -17,13 +17,19 @@
 
 #include <cstdint>
 #include <span>
-#include <sys/ioctl.h>
-#include <sys/stat.h>
-#include <sys/mman.h>
-#include <fcntl.h>
-#include <unistd.h>
+
+#ifdef __SWITCH__
+#   include <switch.h>
+#else
+#   include <sys/ioctl.h>
+#   include <sys/stat.h>
+#   include <sys/mman.h>
+#   include <fcntl.h>
+#   include <unistd.h>
+#endif
 
 #include <nvjpg/nv/ioctl_types.h>
+#include <nvjpg/utils.hpp>
 
 namespace nj {
 
@@ -32,11 +38,20 @@ class NvChannel {
         constexpr NvChannel() = default;
 
         ~NvChannel() {
+#ifdef __SWITCH__
+            if (this->channel.fd != -1u)
+#else
             if (this->fd != -1)
+#endif
                 this->close();
         }
 
-        int open(const char *path) {
+        Result open(const char *path) {
+#ifdef __SWITCH__
+            NJ_TRY_RET(nvChannelCreate(&this->channel, path));
+            NJ_TRY_RET(nvioctlChannel_GetSyncpt(this->channel.fd, 0, &this->syncpt));
+            return 0;
+#else
             this->fd = ::open(path, O_RDWR | O_CLOEXEC);
             if (this->fd < 0)
                 return this->fd;
@@ -51,16 +66,25 @@ class NvChannel {
                 this->syncpt = args.value;
 
             return this->fd;
+#endif
         }
 
-        int close() {
+        Result close() {
+#ifdef __SWITCH__
+            nvChannelClose(&this->channel);
+            return 0;
+#else
             auto rc = ::close(this->fd);
             if (rc != -1)
                 this->fd = -1;
             return rc;
+#endif
         }
 
-        int get_clock_rate(std::uint32_t id, std::uint32_t &rate) const {
+        Result get_clock_rate(std::uint32_t id, std::uint32_t &rate) const {
+#ifdef __SWITCH__
+            return 0;
+#else
             nvhost_clk_rate_args args = {
                 .rate     = 0,
                 .moduleid = id,
@@ -71,18 +95,32 @@ class NvChannel {
                 rate = args.rate;
 
             return rc;
+#endif
         }
 
-        int set_clock_rate(std::uint32_t id, std::uint32_t rate) const {
+        Result set_clock_rate(std::uint32_t id, std::uint32_t rate) const {
+#ifdef __SWITCH__
+            return 0;
+#else
             nvhost_clk_rate_args args = {
                 .rate     = rate,
                 .moduleid = id,
             };
 
             return ::ioctl(this->fd, NVHOST_IOCTL_CHANNEL_SET_CLK_RATE, &args);
+#endif
         }
 
-        int submit(std::span<nvhost_cmdbuf> cmdbufs, std::span<nvhost_cmdbuf_ext> exts, std::span<std::uint32_t> class_ids,
+#ifdef __SWITCH__
+        Result submit(std::span<nvioctl_cmdbuf> cmdbufs, std::span<nvioctl_reloc> relocs, std::span<nvioctl_reloc_shift> shifts,
+                std::span<nvioctl_syncpt_incr> incrs, std::span<nvioctl_fence> fences) {
+            return nvioctlChannel_Submit(this->channel.fd, cmdbufs.data(), static_cast<std::uint32_t>(cmdbufs.size()),
+                relocs.data(), shifts.data(), static_cast<std::uint32_t>(relocs.size()),
+                incrs.data(),  static_cast<std::uint32_t>(incrs.size()),
+                fences.data(), static_cast<std::uint32_t>(fences.size()));
+        }
+#else
+        Result submit(std::span<nvhost_cmdbuf> cmdbufs, std::span<nvhost_cmdbuf_ext> exts, std::span<std::uint32_t> class_ids,
                 std::span<nvhost_reloc> relocs, std::span<nvhost_reloc_shift> shifts, std::span<nvhost_reloc_type> types,
                 std::span<nvhost_syncpt_incr> incrs, std::span<std::uint32_t> fences, nvhost_ctrl_fence &fence) const {
             nvhost_submit_args args = {
@@ -111,13 +149,18 @@ class NvChannel {
 
             auto rc = ::ioctl(this->fd, NVHOST_IOCTL_CHANNEL_SUBMIT, &args);
             if (!rc)
-                fence.thresh = args.fence;
+                fence.value = args.fence;
 
             return rc;
         }
+#endif
 
-        int get_fd() const {
+        Result get_fd() const {
+#ifdef __SWITCH__
+            return this->channel.fd;
+#else
             return this->fd;
+#endif
         }
 
         std::uint32_t get_syncpt() const {
@@ -125,8 +168,13 @@ class NvChannel {
         }
 
     private:
-        int           fd     = 0;
-        std::uint32_t syncpt = 0;
+        std::uint32_t syncpt  = 0;
+
+#ifdef __SWITCH__
+        ::NvChannel   channel = {};
+#else
+        int           fd      = 0;
+#endif
 };
 
 } // namespace nj

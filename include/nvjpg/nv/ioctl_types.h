@@ -22,7 +22,20 @@ extern "C" {
 #endif
 
 #include <stdint.h>
-#include <linux/ioctl.h>
+
+#ifdef __SWITCH__
+#   include <switch.h>
+#else
+#   include <linux/ioctl.h>
+#endif
+
+#ifdef __SWITCH__
+
+typedef nvioctl_fence       nvhost_ctrl_fence;
+typedef nvioctl_cmdbuf      nvhost_cmdbuf;
+typedef nvioctl_syncpt_incr nvhost_syncpt_incr;
+
+#else
 
 typedef struct {
     uint32_t size;
@@ -43,12 +56,6 @@ typedef struct {
     int32_t  op;
 } nvmap_cache_args;
 
-enum {
-    NVMAP_CACHE_OP_WB     = 0,
-    NVMAP_CACHE_OP_INV    = 1,
-    NVMAP_CACHE_OP_WB_INV = 2,
-};
-
 #define NVMAP_IOCTL_MAGIC 'N'
 #define NVMAP_IOCTL_CREATE   _IOWR(NVMAP_IOCTL_MAGIC, 0,  nvmap_create_args)
 #define NVMAP_IOCTL_ALLOC    _IOW (NVMAP_IOCTL_MAGIC, 3,  nvmap_alloc_args)
@@ -56,8 +63,8 @@ enum {
 #define NVMAP_IOCTL_CACHE    _IOW (NVMAP_IOCTL_MAGIC, 12, nvmap_cache_args)
 
 typedef struct {
-    uint32_t syncpt;
-    uint32_t thresh;
+    uint32_t id;
+    uint32_t value;
 } nvhost_ctrl_fence;
 
 typedef struct {
@@ -148,17 +155,25 @@ typedef struct {
 
 #define NVHOST_SUBMIT_VERSION_V2 2
 
+#define NVHOST_IOCTL_CHANNEL_GET_CLK_RATE  _IOWR(NVHOST_IOCTL_MAGIC, 9,  nvhost_clk_rate_args)
+#define NVHOST_IOCTL_CHANNEL_SET_CLK_RATE  _IOW (NVHOST_IOCTL_MAGIC, 10, nvhost_clk_rate_args)
+#define NVHOST_IOCTL_CHANNEL_GET_SYNCPOINT _IOWR(NVHOST_IOCTL_MAGIC, 16, nvhost_get_param_args)
+#define NVHOST_IOCTL_CHANNEL_SUBMIT        _IOWR(NVHOST_IOCTL_MAGIC, 26, nvhost_submit_args)
+
+#endif
+
+enum {
+    NVMAP_CACHE_OP_WB              = 0,
+    NVMAP_CACHE_OP_INV             = 1,
+    NVMAP_CACHE_OP_WB_INV          = 2,
+};
+
 enum {
     NVHOST_RELOC_TYPE_DEFAULT      = 0,
     NVHOST_RELOC_TYPE_PITCH_LINEAR = 1,
     NVHOST_RELOC_TYPE_BLOCK_LINEAR = 2,
     NVHOST_RELOC_TYPE_NVLINK       = 3,
 };
-
-#define NVHOST_IOCTL_CHANNEL_GET_CLK_RATE  _IOWR(NVHOST_IOCTL_MAGIC, 9,  nvhost_clk_rate_args)
-#define NVHOST_IOCTL_CHANNEL_SET_CLK_RATE  _IOW (NVHOST_IOCTL_MAGIC, 10, nvhost_clk_rate_args)
-#define NVHOST_IOCTL_CHANNEL_GET_SYNCPOINT _IOWR(NVHOST_IOCTL_MAGIC, 16, nvhost_get_param_args)
-#define NVHOST_IOCTL_CHANNEL_SUBMIT        _IOWR(NVHOST_IOCTL_MAGIC, 26, nvhost_submit_args)
 
 #ifdef __cplusplus
 }

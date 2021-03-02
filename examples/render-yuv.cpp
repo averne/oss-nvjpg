@@ -128,7 +128,7 @@ int main(int argc, char **argv) {
     std::size_t read = 0;
     decoder.wait(surf, &read);
     auto time = std::chrono::system_clock::now() - start;
-    printf("Rendered in %ldµs, read bytes: %lu\n",
+    std::printf("Rendered in %ldµs, read bytes: %lu\n",
         std::chrono::duration_cast<std::chrono::microseconds>(time).count(), read);
 
     display_image(surf);

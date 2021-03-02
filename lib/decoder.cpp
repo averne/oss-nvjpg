@@ -61,38 +61,60 @@ constinit std::array kernel_bt601ex = {
 
 } // namespace
 
-int Decoder::initialize(std::size_t capacity) {
+Result Decoder::initialize(std::size_t capacity) {
     NJ_TRY_RET(this->cmdbuf_map   .allocate(0x8000,                   32,     0x1));
     NJ_TRY_RET(this->pic_info_map .allocate(sizeof(NvjpgPictureInfo), 16,     0x1));
     NJ_TRY_RET(this->read_data_map.allocate(sizeof(NvjpgStatus),      16,     0x1));
     NJ_TRY_RET(this->scan_data_map.allocate(capacity,                 0x1000, 0x1));
 
+#ifdef __SWITCH__
+    NJ_TRY_RET(this->channel.open("/dev/nvhost-nvjpg"));
+
+    NJ_TRY_RET(this->cmdbuf_map   .map(this->channel.get_fd()));
+    NJ_TRY_RET(this->pic_info_map .map(this->channel.get_fd()));
+    NJ_TRY_RET(this->read_data_map.map(this->channel.get_fd()));
+    NJ_TRY_RET(this->scan_data_map.map(this->channel.get_fd()));
+
+    NJ_TRY_RET(mmuRequestInitialize(&this->request, MmuModuleId_Nvjpg, 8, false));
+#else
+    NJ_TRY_ERRNO(this->channel.open("/dev/nvhost-nvjpg"));
+
     NJ_TRY_ERRNO(this->cmdbuf_map   .map());
     NJ_TRY_ERRNO(this->pic_info_map .map());
     NJ_TRY_ERRNO(this->read_data_map.map());
     NJ_TRY_ERRNO(this->scan_data_map.map());
-
-    NJ_TRY_ERRNO(this->channel.open("/dev/nvhost-nvjpg"));
+#endif
 
     return 0;
 }
 
-int Decoder::finalize() {
+Result Decoder::finalize() {
     NJ_TRY_RET(this->cmdbuf_map   .free());
     NJ_TRY_RET(this->pic_info_map .free());
     NJ_TRY_RET(this->read_data_map.free());
     NJ_TRY_RET(this->scan_data_map.free());
 
+#ifdef __SWITCH__
+    NJ_TRY_RET(this->channel.close());
+
+    NJ_TRY_RET(mmuRequestFinalize(&this->request));
+#else
     NJ_TRY_ERRNO(this->channel.close());
+#endif
 
     return 0;
 }
 
-int Decoder::resize(std::size_t capacity) {
-    NJ_TRY_ERRNO(this->scan_data_map.unmap());
-    NJ_TRY_RET  (this->scan_data_map.free());
-    NJ_TRY_RET  (this->scan_data_map.allocate(capacity, 0x1000, 0x1));
+Result Decoder::resize(std::size_t capacity) {
+    NJ_TRY_RET(this->scan_data_map.free());
+    NJ_TRY_RET(this->scan_data_map.allocate(capacity, 0x1000, 0x1));
+
+#ifdef __SWITCH__
+    NJ_TRY_RET(this->scan_data_map.map(this->channel.get_fd()));
+#else
     NJ_TRY_ERRNO(this->scan_data_map.map());
+#endif
+
     return 0;
 }
 
@@ -149,7 +171,7 @@ NvjpgPictureInfo *Decoder::build_picture_info_common(const Image &image, std::ui
     return info;
 }
 
-int Decoder::render_common(const Image &image, SurfaceBase &surf) {
+Result Decoder::render_common(const Image &image, SurfaceBase &surf) {
     if (image.progressive)
         return EINVAL;
 
@@ -173,9 +195,6 @@ int Decoder::render_common(const Image &image, SurfaceBase &surf) {
     this->cmdbuf.push_raw(this->channel.get_syncpt() | (true << 8)); // Condition: 0 = immediate, 1 = when done
     this->cmdbuf.end();
 
-    auto &&[cmdbufs, exts,   class_ids] = this->cmdbuf.get_bufs();
-    auto &&[relocs,  shifts, types]     = this->cmdbuf.get_relocs();
-
     std::array incrs = {
         nvhost_syncpt_incr{
             .syncpt_id    = this->channel.get_syncpt(),
@@ -183,16 +202,27 @@ int Decoder::render_common(const Image &image, SurfaceBase &surf) {
         },
     };
 
+    surf.render_fence.id = this->channel.get_syncpt();
+
+#ifdef __SWITCH__
+    return this->channel.submit(this->cmdbuf.get_bufs(), {}, {}, incrs, std::span(&surf.render_fence, 1));
+#else
     std::array fences = {
         0u,
     };
 
-    surf.render_fence.syncpt = this->channel.get_syncpt();
+    auto &&[cmdbufs, exts,   class_ids] = this->cmdbuf.get_bufs();
+    auto &&[relocs,  shifts, types]     = this->cmdbuf.get_relocs();
 
     return this->channel.submit(cmdbufs, exts, class_ids, relocs, shifts, types, incrs, fences, surf.render_fence);
+#endif
 }
 
-int Decoder::render(const Image &image, Surface &surf, std::uint8_t alpha, std::uint32_t downscale) {
+Result Decoder::render(const Image &image, Surface &surf, std::uint8_t alpha, std::uint32_t downscale) {
+#ifdef __SWITCH__
+    NJ_TRY_RET(surf.map.map(this->channel.get_fd()));
+#endif
+
     if (surf.width == 0 || surf.height == 0)
         return EINVAL;
 
@@ -230,7 +260,11 @@ int Decoder::render(const Image &image, Surface &surf, std::uint8_t alpha, std::
     return this->render_common(image, surf);
 }
 
-int Decoder::render(const Image &image, VideoSurface &surf, std::uint32_t downscale) {
+Result Decoder::render(const Image &image, VideoSurface &surf, std::uint32_t downscale) {
+#ifdef __SWITCH__
+    NJ_TRY_RET(surf.map.map(this->channel.get_fd()));
+#endif
+
     if (surf.width == 0 || surf.height == 0)
         return EINVAL;
 
@@ -258,7 +292,7 @@ int Decoder::render(const Image &image, VideoSurface &surf, std::uint32_t downsc
     return this->render_common(image, surf);
 }
 
-int Decoder::wait(const SurfaceBase &surf, std::size_t *num_read_bytes, std::int32_t timeout_us) {
+Result Decoder::wait(const SurfaceBase &surf, std::size_t *num_read_bytes, std::int32_t timeout_us) {
     NJ_TRY_RET(NvHostCtrl::wait(surf.render_fence, timeout_us));
     if (num_read_bytes)
         *num_read_bytes = reinterpret_cast<NvjpgStatus *>(this->read_data_map.address())->used_bytes;

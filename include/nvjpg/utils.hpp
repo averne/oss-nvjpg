@@ -30,6 +30,10 @@
 
 #define NJ_SCOPEGUARD(f) auto NJ_ANONYMOUS_VAR = ::nj::ScopeGuard(f)
 
+#ifndef __SWITCH__
+typedef int Result;
+#endif
+
 #define NJ_TRY_RET(expr)            \
     if (auto _rc = (expr); _rc)     \
         return _rc;
@@ -38,7 +42,14 @@
     if ((expr); errno)              \
         return errno;
 
+#define NJ_UNUSED(...) ::nj::variadic_unused(__VA_ARGS__)
+
 namespace nj {
+
+template <typename ...Args>
+consteval void variadic_unused(Args &&...args) {
+    (static_cast<void>(args), ...);
+}
 
 template <typename F>
 struct [[nodiscard]] ScopeGuard {

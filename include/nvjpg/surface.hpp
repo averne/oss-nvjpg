@@ -72,7 +72,12 @@ class SurfaceBase {
 
     protected:
         NvMap map;
+
+#ifdef __SWITCH__
+        NvFence           render_fence = {};
+#else
         nvhost_ctrl_fence render_fence = {};
+#endif
 
         friend class Decoder;
 };

@@ -25,6 +25,10 @@
 #include <nvjpg/image.hpp>
 #include <nvjpg/surface.hpp>
 
+#ifdef __SWITCH__
+#   include <switch.h>
+#endif
+
 namespace nj {
 
 class Decoder {
@@ -43,40 +47,56 @@ class Decoder {
     public:
         Decoder(): cmdbuf(this->cmdbuf_map) { }
 
-        int initialize(std::size_t capacity = 0x500000); // 5 Mib
-        int finalize();
+        Result initialize(std::size_t capacity = 0x500000); // 5 Mib
+        Result finalize();
 
-        int resize(std::size_t capacity);
+        Result resize(std::size_t capacity);
 
         std::size_t capacity() const {
             return this->scan_data_map.size();
         }
 
-        int render(const Image &image, Surface      &surf, std::uint8_t alpha = 0, std::uint32_t downscale = 0);
-        int render(const Image &image, VideoSurface &surf, std::uint32_t downscale = 0);
+        Result render(const Image &image, Surface      &surf, std::uint8_t alpha = 0, std::uint32_t downscale = 0);
+        Result render(const Image &image, VideoSurface &surf, std::uint32_t downscale = 0);
 
-        int wait(const SurfaceBase &surf, std::size_t *num_read_bytes = nullptr, std::int32_t timeout_us = -1);
+        Result wait(const SurfaceBase &surf, std::size_t *num_read_bytes = nullptr, std::int32_t timeout_us = -1);
 
+        // In Hz
         std::uint32_t get_clock_rate() const {
             std::uint32_t rate = 0;
+#ifdef __SWITCH__
+            std::uint32_t tmp = 0;
+            if (auto rc = mmuRequestGet(&this->request, &tmp); R_SUCCEEDED(rc))
+                rate = tmp;
+#else
             this->channel.get_clock_rate(Decoder::class_id, rate);
+#endif
             return rate;
         }
 
-        int set_clock_rate(std::uint32_t rate) const {
+        // In Hz
+        Result set_clock_rate(std::uint32_t rate) const {
+#ifdef __SWITCH__
+            return mmuRequestSetAndWait(&this->request, rate, -1u);
+#else
             return this->channel.set_clock_rate(Decoder::class_id, rate);
+#endif
         }
 
     private:
         NvjpgPictureInfo *build_picture_info_common(const Image &image, std::uint32_t downscale);
 
-        int render_common(const Image &image, SurfaceBase &surf);
+        Result render_common(const Image &image, SurfaceBase &surf);
 
     private:
         NvChannel channel;
         NvMap cmdbuf_map, pic_info_map, read_data_map, scan_data_map;
 
         CmdBuf cmdbuf;
+
+#ifdef __SWITCH__
+        MmuRequest request;
+#endif
 };
 
 } // namespace nj

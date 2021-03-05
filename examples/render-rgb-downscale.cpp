@@ -73,7 +73,7 @@ int main(int argc, char **argv) {
         std::printf("Image dimensions: %ux%u\n", image.width, image.height);
 
         auto start = std::chrono::system_clock::now();
-        if (auto rc = decoder.render(image, surf, DOWNSCALE_FACTOR); rc)
+        if (auto rc = decoder.render(image, surf, 0, DOWNSCALE_FACTOR); rc)
             std::fprintf(stderr, "Failed to render image: %#x (%s)\n", rc, std::strerror(errno));
 
         std::size_t read = 0;

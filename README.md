@@ -24,7 +24,7 @@ Requires C++20 support.
 ```sh
 meson build && meson compile -C build
 ```
-Additionally, run `meson compile -C build render-rgb render-yuv render-rgb-downscale` to build the examples.
+Additionally, run `meson compile -C build examples` to build the examples.
 
 ### devkitA64
 ```sh

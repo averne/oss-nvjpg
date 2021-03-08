@@ -29,9 +29,7 @@
             "command": "ninja",
             "args": [
                 "all",
-                "render-rgb",
-                "render-rgb-downscale",
-                "render-yuv",
+                "examples",
                 "-j$(nproc)",
             ],
             "options": {

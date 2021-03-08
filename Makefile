@@ -17,7 +17,7 @@ SOURCES           =    lib
 INCLUDES          =    include
 CUSTOM_LIBS       =
 ROMFS             =
-EXAMPLES          =    examples/render-nx.cpp
+EXAMPLES          =    examples/render-nx.cpp examples/render-deko3d.cpp
 
 DEFINES           =    __SWITCH__ VERSION=\"$(VERSION)\" COMMIT=\"$(COMMIT)\"
 ARCH              =    -march=armv8-a+crc+crypto+simd -mtune=cortex-a57 -mtp=soft -fpie
@@ -56,7 +56,9 @@ INCLUDE_FLAGS     =    $(addprefix -I$(CURDIR)/,$(INCLUDES)) $(foreach dir,$(CUS
 					   $(foreach dir,$(filter-out $(CUSTOM_LIBS),$(LIBS)),-I$(dir)/include)
 LIB_FLAGS         =    $(foreach dir,$(LIBS),-L$(dir)/lib)
 
-EXAMPLES_TARGET   =    $(if $(OUT:=), $(OUT)/$(EXAMPLES).nro, .$(OUT)/$(EXAMPLES).nro)
+
+EXAMPLES_TARGET   =    $(if $(OUT:=), $(patsubst %, $(OUT)/%.nro, $(basename $(EXAMPLES))), \
+                           $(patsubst %, .$(OUT)/%.nro, $(basename $(EXAMPLES))))
 EXAMPLES_OFILES   =    $(EXAMPLES:%=$(BUILD)/%.o)
 EXAMPLES_DFILES   =    $(EXAMPLES_OFILES:.o=.d)
 
@@ -69,14 +71,13 @@ EXAMPLES_DFILES   =    $(EXAMPLES_OFILES:.o=.d)
 all: $(LIB_TARGET)
 	@:
 
-examples: all $(EXAMPLES_TARGET)
+examples: $(EXAMPLES_TARGET) $(EXAMPLES_OFILES)
 	@:
 
-$(EXAMPLES_TARGET): $(LIB_TARGET) $(EXAMPLES_OFILES)
+$(OUT)/%.nro: $(BUILD)/%.cpp.o | $(LIB_TARGET)
 	@mkdir -p $(dir $@)
 	@echo " NRO " $@
-	@echo $(basename $@)
-	@$(LD) $(ARCH) $^ -L $(OUT) -L $(DEVKITPRO)/libnx/lib -l nvjpg -l nx -Wl,-pie -specs=$(DEVKITPRO)/libnx/switch.specs -o $(@:.nro=.elf)
+	@$(LD) $(ARCH) $^ -L $(OUT) -L $(DEVKITPRO)/libnx/lib -ldeko3d -l nvjpg -l nx -Wl,-pie -specs=$(DEVKITPRO)/libnx/switch.specs -o $(@:.nro=.elf)
 	@nacptool --create $(notdir $(@:.nro=)) averne 0.0.0 $(@:.nro=.nacp)
 	@elf2nro $(@:.nro=.elf) $@ --nacp=$(@:.nro=.nacp) > /dev/null
 

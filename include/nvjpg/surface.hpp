@@ -18,9 +18,14 @@
 #pragma once
 
 #include <cstdlib>
+#include <algorithm>
 
 #include <nvjpg/nv/ioctl_types.h>
 #include <nvjpg/nv/map.hpp>
+
+#if defined(__SWITCH__) && __has_include(<deko3d.hpp>)
+#   include <deko3d.hpp>
+#endif
 
 namespace nj {
 
@@ -101,6 +106,47 @@ class Surface: public SurfaceBase {
                     return 4;
             }
         }
+
+#if defined(__SWITCH__) && __has_include(<deko3d.hpp>)
+        std::tuple<dk::MemBlock, dk::Image> to_deko3d(dk::Device device, dk::Queue queue,
+                    std::uint32_t flags = 0, DkImageFormat format = DkImageFormat_RGBA8_Uint) const {
+            dk::ImageLayout layout;
+            dk::ImageLayoutMaker{device}
+                .setFlags(flags)
+                .setFormat(format)
+                .setDimensions(this->width, this->height)
+                .initialize(layout);
+
+            auto image_size = align_up(static_cast<std::uint32_t>(layout.getSize()), layout.getAlignment());
+            auto image_memblock = dk::MemBlockMaker(device, image_size)
+                .setFlags(DkMemBlockFlags_CpuUncached | DkMemBlockFlags_GpuCached | DkMemBlockFlags_Image)
+                .create();
+
+            dk::Image image;
+            image.initialize(layout, image_memblock, 0);
+
+            dk::UniqueMemBlock tmp_buf_memblock = dk::MemBlockMaker(device, this->size())
+                .setFlags(DkMemBlockFlags_CpuUncached | DkMemBlockFlags_GpuCached)
+                .create();
+
+            std::copy_n(this->data(), this->size(), static_cast<std::uint8_t *>(tmp_buf_memblock.getCpuAddr()));
+
+            dk::UniqueMemBlock tmp_cmdbuf_memblock = dk::MemBlockMaker(device, DK_MEMBLOCK_ALIGNMENT)
+                .setFlags(DkMemBlockFlags_CpuUncached | DkMemBlockFlags_GpuCached)
+                .create();
+
+            dk::UniqueCmdBuf tmp_cmdbuf = dk::CmdBufMaker(device)
+                .create();
+            tmp_cmdbuf.addMemory(tmp_cmdbuf_memblock, 0, tmp_cmdbuf_memblock.getSize());
+
+            tmp_cmdbuf.copyBufferToImage(DkCopyBuf(tmp_buf_memblock.getGpuAddr(), this->pitch, this->height),
+                dk::ImageView(image), DkImageRect(0, 0, 0, this->width, this->height, 1));
+            queue.submitCommands(tmp_cmdbuf.finishList());
+            queue.waitIdle();
+
+            return { image_memblock, image };
+        }
+#endif
 
         constexpr auto get_memory_mode() const {
             return MemoryMode::Planar;

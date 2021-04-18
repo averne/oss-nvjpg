@@ -74,7 +74,7 @@ all: $(LIB_TARGET)
 examples: $(EXAMPLES_TARGET) $(EXAMPLES_OFILES)
 	@:
 
-$(OUT)/%.nro: $(BUILD)/%.cpp.o | $(LIB_TARGET)
+$(OUT)/%.nro: $(BUILD)/%.cpp.o $(LIB_TARGET)
 	@mkdir -p $(dir $@)
 	@echo " NRO " $@
 	@$(LD) $(ARCH) $^ -L $(OUT) -L $(DEVKITPRO)/libnx/lib -ldeko3d -l nvjpg -l nx -Wl,-pie -specs=$(DEVKITPRO)/libnx/switch.specs -o $(@:.nro=.elf)

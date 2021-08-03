@@ -18,6 +18,7 @@
 #pragma once
 
 #include <cstdint>
+#include <vector>
 
 #include <nvjpg/nv/cmdbuf.hpp>
 #include <nvjpg/nv/channel.hpp>
@@ -33,6 +34,12 @@ namespace nj {
 
 class Decoder {
     public:
+        struct RingEntry {
+            NvMap cmdbuf_map, pic_info_map, read_data_map, scan_data_map;
+            CmdBuf cmdbuf{cmdbuf_map};
+            nvhost_ctrl_fence fence;
+        };
+
         enum class ColorSpace {
             BT601,      // ITUR BT-601
             BT709,      // ITUR BT-709
@@ -45,21 +52,25 @@ class Decoder {
         ColorSpace colorspace = ColorSpace::BT601Ex;
 
     public:
-        Decoder(): cmdbuf(this->cmdbuf_map) { }
-
-        Result initialize(std::size_t capacity = 0x500000); // 5 Mib
+        Result initialize(std::size_t num_ring_entries = 1, std::size_t capacity = 0x500000); // 5 Mib
         Result finalize();
 
         Result resize(std::size_t capacity);
 
         std::size_t capacity() const {
-            return this->scan_data_map.size();
+            if (this->entries.empty())
+                return 0;
+            return this->entries[0].scan_data_map.size();
         }
 
         Result render(const Image &image, Surface      &surf, std::uint8_t alpha = 0, std::uint32_t downscale = 0);
         Result render(const Image &image, VideoSurface &surf, std::uint32_t downscale = 0);
 
         Result wait(const SurfaceBase &surf, std::size_t *num_read_bytes = nullptr, std::int32_t timeout_us = -1);
+
+        Result wait(auto &&...surfs) requires requires (decltype(surfs) ...args) { (args.width, ...); } {
+            return (this->wait(surfs, nullptr, -1) | ...);
+        }
 
         // In Hz
         std::uint32_t get_clock_rate() const {
@@ -84,15 +95,16 @@ class Decoder {
         }
 
     private:
-        NvjpgPictureInfo *build_picture_info_common(const Image &image, std::uint32_t downscale);
+        RingEntry &get_ring_entry() const;
 
-        Result render_common(const Image &image, SurfaceBase &surf);
+        NvjpgPictureInfo *build_picture_info_common(RingEntry &entry, const Image &image, std::uint32_t downscale);
+
+        Result render_common(RingEntry &entry, const Image &image, SurfaceBase &surf);
 
     private:
         NvChannel channel;
-        NvMap cmdbuf_map, pic_info_map, read_data_map, scan_data_map;
-
-        CmdBuf cmdbuf;
+        std::vector<RingEntry> entries;
+        std::vector<RingEntry>::iterator next_entry;
 
 #ifdef __SWITCH__
         MmuRequest request;

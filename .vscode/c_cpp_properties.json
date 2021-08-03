@@ -11,7 +11,7 @@
         {
             "name": "DKP Aarch64",
             "includePath": [
-                "${workspaceFolder}/**",
+                "${workspaceFolder}/include",
 
                 "~/Bureau/Switch/libnx/nx/source/**",
                 "~/Bureau/Switch/libnx/nx/include/**",

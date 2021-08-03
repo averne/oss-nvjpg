@@ -1,4 +1,4 @@
-project('nvjpg', ['c', 'cpp'], version: '1.0.0',
+project('nvjpg', ['c', 'cpp'], version: '1.1.0',
     default_options: [
         'buildtype=release',
         'default_library=static',

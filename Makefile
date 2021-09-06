@@ -17,7 +17,7 @@ SOURCES           =    lib
 INCLUDES          =    include
 CUSTOM_LIBS       =
 ROMFS             =
-EXAMPLES          =    examples/render-nx.cpp examples/render-deko3d.cpp
+EXAMPLES          =    examples/render-nx.cpp examples/render-icons.cpp examples/render-deko3d.cpp
 
 DEFINES           =    __SWITCH__ VERSION=\"$(VERSION)\" COMMIT=\"$(COMMIT)\"
 ARCH              =    -march=armv8-a+crc+crypto+simd -mtune=cortex-a57 -mtp=soft -fpie

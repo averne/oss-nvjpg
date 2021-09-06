@@ -19,7 +19,6 @@
 #include <cstring>
 #include <algorithm>
 #include <chrono>
-#include <deko3d.hpp>
 #include <nvjpg.hpp>
 
 extern "C" void userAppInit() {
@@ -32,7 +31,7 @@ extern "C" void userAppExit() {
 }
 
 static void display_image(const nj::Surface &surface) {
-    constexpr std::size_t fb_width = 1080, fb_height = 720;
+    constexpr std::size_t fb_width = 1280, fb_height = 720;
     Framebuffer fb;
     framebufferCreate(&fb, nwindowGetDefault(), fb_width, fb_height, PIXEL_FORMAT_RGBA_8888, 1);
     framebufferMakeLinear(&fb);

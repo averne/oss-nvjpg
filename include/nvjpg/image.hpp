@@ -94,7 +94,7 @@ class Image {
 
     public:
         Image() = default;
-        Image(std::shared_ptr<std::vector<std::uint8_t>> &&data): data(std::move(data)) { }
+        Image(std::shared_ptr<std::vector<std::uint8_t>> data): data(data) { }
         Image(int fd);
         Image(FILE *fp): Image(fileno(fp)) { }
         Image(std::string_view path): Image(::open(path.data(), O_RDONLY)) { }

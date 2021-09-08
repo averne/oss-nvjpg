@@ -51,7 +51,6 @@ static void display_image(const nj::Surface &surface) {
         padUpdate(&g_pad);
         if (padGetButtonsDown(&g_pad) & (HidNpadButton_A | HidNpadButton_Plus))
             break;
-        consoleUpdate(nullptr);
     }
 }
 
@@ -71,7 +70,7 @@ int main(int argc, char **argv) {
 
     std::printf("Press A to show the next icon, + to exit\n");
 
-    padConfigureInput(1, HidNpadStyleTag_NpadHandheld);
+    padConfigureInput(1, HidNpadStyleSet_NpadStandard);
     padInitializeDefault(&g_pad);
 
     framebufferCreate(&g_fb, nwindowGetDefault(), fb_width, fb_height, PIXEL_FORMAT_RGBA_8888, 2);

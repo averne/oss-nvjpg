@@ -125,7 +125,8 @@ class Surface: public SurfaceBase {
             dk::Image image;
             image.initialize(layout, image_memblock, 0);
 
-            dk::UniqueMemBlock tmp_buf_memblock = dk::MemBlockMaker(device, this->size())
+            dk::UniqueMemBlock tmp_buf_memblock = dk::MemBlockMaker(device,
+                    align_up(this->size(), static_cast<std::size_t>(DK_MEMBLOCK_ALIGNMENT)))
                 .setFlags(DkMemBlockFlags_CpuUncached | DkMemBlockFlags_GpuCached)
                 .create();
 

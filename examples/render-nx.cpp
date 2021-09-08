@@ -48,7 +48,6 @@ static void display_image(const nj::Surface &surface) {
         padUpdate(&pad);
         if (padGetButtonsDown(&pad) & HidNpadButton_Plus)
             break;
-        consoleUpdate(nullptr);
     }
 
     framebufferClose(&fb);

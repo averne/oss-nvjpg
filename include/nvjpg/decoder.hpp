@@ -37,7 +37,7 @@ class Decoder {
         struct RingEntry {
             NvMap cmdbuf_map, pic_info_map, read_data_map, scan_data_map;
             CmdBuf cmdbuf{cmdbuf_map};
-            nvhost_ctrl_fence fence;
+            nvhost_ctrl_fence fence{ 0, -1u };
         };
 
         enum class ColorSpace {

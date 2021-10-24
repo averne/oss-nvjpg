@@ -15,12 +15,6 @@
                 "panel": "shared",
                 "reveal": "never"
             },
-            "options": {
-                "env": {
-                    "CC": "gcc-10",
-                    "CXX": "g++-10",
-                }
-            },
             "problemMatcher": []
         },
         {

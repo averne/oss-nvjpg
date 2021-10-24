@@ -135,7 +135,8 @@ Result Decoder::resize(std::size_t capacity) {
 Decoder::RingEntry &Decoder::get_ring_entry() const {
     auto &entry = *this->next_entry;
 
-    NvHostCtrl::wait(entry.fence, -1);
+    if (entry.fence.value != -1u)
+        NvHostCtrl::wait(entry.fence, -1);
 
     return entry;
 }

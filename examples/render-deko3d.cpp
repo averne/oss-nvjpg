@@ -106,7 +106,7 @@ void deko_init() {
 }
 
 void deko_gencmdlist(const nj::Surface &surf) {
-    std::tie(image_memblock, image) = surf.to_deko3d(device, queue, DkImageFlags_HwCompression | DkImageFlags_Usage2DEngine);
+    std::tie(image_memblock, image) = surf.to_deko3d(device, DkImageFlags_HwCompression | DkImageFlags_Usage2DEngine);
 
     DkImageRect rect = {
         0, 0, 0,

@@ -19,6 +19,7 @@
 
 #include <cstdlib>
 #include <algorithm>
+#include <tuple>
 
 #include <nvjpg/nv/ioctl_types.h>
 #include <nvjpg/nv/map.hpp>

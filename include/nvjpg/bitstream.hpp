@@ -30,8 +30,10 @@ class Bitstream {
 
         template <typename T>
         T get() {
-            if (this->cur + sizeof(T) >= this->data.end())
+            if (this->cur + sizeof(T) >= this->data.end()) {
+                this->cur = this->data.end();
                 return {};
+            }
             auto tmp = *reinterpret_cast<const T *>(this->cur.base());
             this->cur += sizeof(T);
             return tmp;
